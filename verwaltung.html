@@ -694,24 +694,29 @@ function saveMeta() {
 }
 
 let metaRef = null;
+let viewingMeta = {};
 function loadMetaForEvent(eventId) {
   if (metaRef) metaRef.off();
   metaRef = db.ref('veranstaltungen/' + eventId + '/meta');
   metaRef.on('value', snap => {
-    const meta = snap.val() || {};
+    viewingMeta = snap.val() || {};
     const nameEl = document.getElementById('event-name');
     const dateEl = document.getElementById('event-date');
-    if (document.activeElement !== nameEl) nameEl.value = meta.name || '';
-    if (document.activeElement !== dateEl) dateEl.value = meta.date || '';
+    if (document.activeElement !== nameEl) nameEl.value = viewingMeta.name || '';
+    if (document.activeElement !== dateEl) dateEl.value = viewingMeta.date || '';
     updateHeaderSub();
     updateViewingBanner();
-    updateMeetingButtons(!!meta.endedAt);
+    refreshMeetingButtons();
   });
 }
 
-function updateMeetingButtons(ended) {
-  document.getElementById('btn-new-event').style.display = ended ? 'inline-flex' : 'none';
-  document.getElementById('btn-end-meeting').style.display = ended ? 'none' : 'inline-flex';
+// Start/Beenden-Buttons nur sichtbar, wenn die AKTIVE Versammlung angesehen wird
+// (sonst könnte man versehentlich eine vergangene Versammlung verändern statt der laufenden)
+function refreshMeetingButtons() {
+  const isViewingActive = viewingEventId === activeEventId;
+  const ended = !!viewingMeta.endedAt;
+  document.getElementById('btn-new-event').style.display = (isViewingActive && ended) ? 'inline-flex' : 'none';
+  document.getElementById('btn-end-meeting').style.display = (isViewingActive && !ended) ? 'inline-flex' : 'none';
 }
 
 function updateHeaderSub() {
@@ -1003,6 +1008,7 @@ async function init() {
       activeEventId = snap.val();
       updateQR();
       updateViewingBanner();
+      refreshMeetingButtons();
     }
   });
   initEventsIndex();
