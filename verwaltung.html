@@ -246,6 +246,15 @@
       <button class="btn btn-outline btn-sm" onclick="closeTeilnehmerTab()">✕ Schließen</button>
     </div>
 
+    <h2 style="font-size:14px">➕ Teilnehmer hinzufügen</h2>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+      <input type="text" id="new-participant-name" placeholder="Vor- und Nachname" style="flex:1" onkeydown="if(event.key==='Enter')addParticipant()">
+      <button class="btn btn-success btn-sm" onclick="addParticipant()">➕ Hinzufügen</button>
+    </div>
+    <div id="add-participant-result" style="font-size:12px;color:var(--muted);margin-bottom:16px"></div>
+
+    <hr style="border:none;border-top:1px solid var(--border);margin:14px 0">
+
     <h2 style="font-size:14px">📋 Liste importieren</h2>
     <p style="font-size:13px;color:var(--muted);margin-bottom:10px;">
       CSV/TXT – eine Zeile pro Person ("Vorname;Nachname" oder voller Name). Importierte Personen stehen zunächst auf <strong>abwesend</strong>.
@@ -815,6 +824,36 @@ function decodeFileText(buffer) {
   } catch (e) {
     return new TextDecoder('windows-1252').decode(bytes);
   }
+}
+
+function addParticipant() {
+  const input = document.getElementById('new-participant-name');
+  const resultEl = document.getElementById('add-participant-result');
+  const name = input.value.trim();
+  if (!name) { input.focus(); return; }
+  if (!viewingEventId) { resultEl.textContent = 'Keine Versammlung ausgewählt.'; return; }
+
+  const key = normalizeName(name);
+  if (participants.some(p => normalizeName(p.name) === key)) {
+    resultEl.textContent = name + ' ist bereits in der Liste vorhanden.';
+    return;
+  }
+
+  const ref = db.ref('veranstaltungen/' + viewingEventId + '/anmeldungen').push();
+  ref.set({
+    name,
+    club: '1. SC 1911 Heiligenstadt',
+    time: '',
+    timestamp: '',
+    source: 'Manuell',
+    present: false
+  }).then(() => {
+    resultEl.textContent = '✅ ' + name + ' hinzugefügt (als abwesend).';
+    input.value = '';
+    input.focus();
+  }).catch(err => {
+    resultEl.textContent = 'Fehler: ' + err.message;
+  });
 }
 
 function importCSV() {
