@@ -321,7 +321,7 @@ function renderTeilnehmerDeleteList() {
     wrap.innerHTML = '<p style="font-size:13px;color:var(--muted)">Keine Teilnehmer vorhanden.</p>';
     return;
   }
-  const sorted = [...participants].sort((a,b) => a.name.localeCompare(b.name));
+  const sorted = [...participants].sort((a,b) => a.name.localeCompare(b.name, 'de', { sensitivity: 'base' }));
   wrap.innerHTML = sorted.map(p => `
     <div style="display:flex;justify-content:space-between;align-items:center;border:1px solid var(--border);border-radius:7px;padding:6px 10px">
       <span style="font-size:13px">${esc(p.name)} <span class="badge ${p.present?'badge-present':'badge-absent'}" style="margin-left:6px">${p.present?'✓':'✗'}</span></span>
@@ -899,9 +899,13 @@ function renderTable() {
 
   const arrow = col => col === sortCol ? (sortDir === 1 ? ' ▲' : ' ▼') : '';
   data.sort((a,b) => {
-    let va = a[sortCol]||'', vb = b[sortCol]||'';
-    if (sortCol === 'present') { va = a.present?0:1; vb = b.present?0:1; }
-    return sortDir * (va < vb ? -1 : va > vb ? 1 : 0);
+    if (sortCol === 'present') {
+      return sortDir * ((a.present?0:1) - (b.present?0:1));
+    }
+    // Deutsche Sortierreihenfolge: Umlaute (Ä/Ö/Ü/ß) korrekt einsortieren,
+    // Zahlen/Uhrzeiten natuerlich vergleichen.
+    const va = String(a[sortCol]||''), vb = String(b[sortCol]||'');
+    return sortDir * va.localeCompare(vb, 'de', { sensitivity: 'base', numeric: true });
   });
 
   document.getElementById('stat-present').textContent = participants.filter(p=>p.present).length;
