@@ -805,6 +805,18 @@ function parseNameLine(line) {
   return cols[0] || '';
 }
 
+// CSV/TXT robust dekodieren: zuerst UTF-8 versuchen; bei ungueltigen Bytes
+// (z.B. Excel-Export als Windows-1252/ANSI) automatisch darauf zurueckfallen,
+// damit Umlaute (ä/ö/ü/ß) nicht verstuemmelt werden.
+function decodeFileText(buffer) {
+  const bytes = new Uint8Array(buffer);
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch (e) {
+    return new TextDecoder('windows-1252').decode(bytes);
+  }
+}
+
 function importCSV() {
   const fileInput = document.getElementById('import-file');
   const file = fileInput.files[0];
@@ -814,7 +826,8 @@ function importCSV() {
 
   const reader = new FileReader();
   reader.onload = () => {
-    const lines = String(reader.result).split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    const text = decodeFileText(reader.result);
+    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
     const existingNames = new Set(participants.map(p => normalizeName(p.name)));
     const seen = new Set();
     const toAdd = [];
@@ -853,7 +866,7 @@ function importCSV() {
       resultEl.textContent = 'Fehler beim Import: ' + err.message;
     });
   };
-  reader.readAsText(file, 'UTF-8');
+  reader.readAsArrayBuffer(file);
 }
 
 // ── Toggle / Remove ───────────────────────────────────────────────────────────
