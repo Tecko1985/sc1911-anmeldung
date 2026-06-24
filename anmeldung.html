@@ -236,9 +236,16 @@ function applyEndedState() {
     if (dupMsg && formVisible) {
       dupMsg.textContent = '🔒 Diese Versammlung ist bereits beendet. Eine Anmeldung ist nicht mehr möglich.';
       dupMsg.style.display = 'block';
+      dupMsg.dataset.ended = '1';
     }
-  } else if (submitBtn) {
-    submitBtn.disabled = false;
+  } else {
+    if (submitBtn) submitBtn.disabled = false;
+    // Reaktiviert: ggf. zurückgebliebene "beendet"-Meldung entfernen
+    if (dupMsg && dupMsg.dataset.ended === '1') {
+      dupMsg.style.display = 'none';
+      dupMsg.textContent = '';
+      delete dupMsg.dataset.ended;
+    }
   }
 }
 
