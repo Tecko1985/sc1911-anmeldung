@@ -321,7 +321,7 @@ function renderTeilnehmerDeleteList() {
     wrap.innerHTML = '<p style="font-size:13px;color:var(--muted)">Keine Teilnehmer vorhanden.</p>';
     return;
   }
-  const sorted = [...participants].sort((a,b) => a.name.localeCompare(b.name, 'de', { sensitivity: 'base' }));
+  const sorted = [...participants].sort((a,b) => (a.name||'').localeCompare(b.name||'', 'de', { sensitivity: 'base' }));
   wrap.innerHTML = sorted.map(p => `
     <div style="display:flex;justify-content:space-between;align-items:center;border:1px solid var(--border);border-radius:7px;padding:6px 10px">
       <span style="font-size:13px">${esc(p.name)} <span class="badge ${p.present?'badge-present':'badge-absent'}" style="margin-left:6px">${p.present?'✓':'✗'}</span></span>
@@ -908,7 +908,7 @@ function esc(s) {
 
 function renderTable() {
   const q = (document.getElementById('search').value || '').toLowerCase();
-  let data = participants.filter(p => p.name.toLowerCase().includes(q));
+  let data = participants.filter(p => (p.name || '').toLowerCase().includes(q));
 
   const arrow = col => col === sortCol ? (sortDir === 1 ? ' ▲' : ' ▼') : '';
   data.sort((a,b) => {
