@@ -292,7 +292,6 @@ const db = firebase.database();
 
 let sortCol = 'timestamp', sortDir = -1;
 let participants = [];
-let qrInstance = null;
 let activeEventId = null;
 let viewingEventId = null;
 let participantsRef = null;
@@ -427,7 +426,7 @@ function renderVersammlungenList(entries) {
   }
   let html = entries.map(e => {
     const list = Object.values(e.anmeldungen);
-    const present = list.filter(p => p.present).length;
+    const present = list.filter(isPresent).length;
     const absent = list.length - present;
     const quote = list.length > 0 ? Math.round((present / list.length) * 100) : 0;
     const dateTxt = e.meta.date ? new Date(e.meta.date + 'T12:00:00').toLocaleDateString('de-DE') : '';
@@ -475,7 +474,7 @@ function showComparison() {
       const key = (p.name || '').toLowerCase();
       if (!key) return;
       if (!persons[key]) persons[key] = { name: p.name, perEvent: {} };
-      persons[key].perEvent[ev.id] = !!p.present;
+      persons[key].perEvent[ev.id] = isPresent(p);
     });
   });
 
@@ -516,8 +515,6 @@ function showComparison() {
 
 function selectEvent(eventId) {
   if (!eventId) return;
-  const select = document.getElementById('event-select');
-  if (select) select.value = eventId;
   attachParticipantsListener(eventId);
   loadMetaForEvent(eventId);
 }
@@ -595,8 +592,8 @@ async function openMeetingReport(eventId) {
   const meta = ev.meta || {};
   const list = Object.values(ev.anmeldungen || {});
   list.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-  const present = list.filter(p => p.present);
-  const absent = list.filter(p => !p.present);
+  const present = list.filter(isPresent);
+  const absent = list.filter(p => !isPresent(p));
 
   const meetingName = meta.name || 'Trainerversammlung';
   const dateTxt = meta.date ? new Date(meta.date + 'T12:00:00').toLocaleDateString('de-DE') : '';
@@ -606,7 +603,7 @@ async function openMeetingReport(eventId) {
 
   const rowHtml = p => `<tr>
       <td>${esc(p.name)}</td>
-      <td>${p.present ? '✓ Anwesend' : '✗ Abwesend'}</td>
+      <td>${isPresent(p) ? '✓ Anwesend' : '✗ Abwesend'}</td>
       <td>${esc(p.time || '')}</td>
       <td>${esc(p.source || '')}</td>
     </tr>`;
@@ -867,6 +864,10 @@ function sortBy(col) {
   if (sortCol === col) sortDir *= -1;
   else { sortCol = col; sortDir = 1; }
   renderTable();
+}
+
+function isPresent(p) {
+  return p.present === undefined ? true : p.present;
 }
 
 function esc(s) {
