@@ -581,12 +581,19 @@ async function endMeeting() {
   const meetingName = nameEl.value || 'Trainerversammlung';
   if (!confirm('"' + meetingName + '" jetzt beenden und als abgeschlossen speichern?')) return;
 
+  // Bericht-Fenster SOFORT oeffnen, solange die User-Geste (Klick) noch aktiv ist.
+  // Nach dem await unten wuerde der Popup-Blocker das Fenster sonst evtl. verhindern.
+  const w = window.open('', '_blank');
   await db.ref('veranstaltungen/' + viewingEventId + '/meta').update({ endedAt: new Date().toISOString() });
-  await openMeetingReport(viewingEventId);
+  await openMeetingReport(viewingEventId, w);
   loadMetaForEvent(viewingEventId);
 }
 
-async function openMeetingReport(eventId) {
+async function openMeetingReport(eventId, win) {
+  // Fenster sofort oeffnen (User-Geste noch aktiv), erst danach Daten laden.
+  const w = win || window.open('', '_blank');
+  if (w && !win) w.document.write('<!DOCTYPE html><meta charset="UTF-8"><body style="font-family:sans-serif;padding:32px;color:#555">Bericht wird geladen…</body>');
+
   const snap = await db.ref('veranstaltungen/' + eventId).once('value');
   const ev = snap.val() || {};
   const meta = ev.meta || {};
@@ -608,7 +615,8 @@ async function openMeetingReport(eventId) {
       <td>${esc(p.source || '')}</td>
     </tr>`;
 
-  const w = window.open('', '_blank');
+  if (!w) { alert('Bitte Popups für diese Seite erlauben, um den Bericht zu öffnen.'); return; }
+  w.document.open();
   w.document.write(`<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8">
   <title>${esc(meetingName)} – Bericht</title>
   <style>
@@ -1008,7 +1016,16 @@ function exportCSV() {
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
+// Reste aus der alten localStorage-Version (vor der Firebase-Umstellung) entfernen
+function cleanupLegacyStorage() {
+  try {
+    localStorage.removeItem('sc1911_anmeldungen');
+    localStorage.removeItem('sc1911_meta');
+  } catch (e) {}
+}
+
 async function init() {
+  cleanupLegacyStorage();
   activeEventId = await ensureActiveEvent();
   db.ref('config/activeEvent').on('value', snap => {
     if (snap.val()) {

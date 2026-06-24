@@ -328,6 +328,12 @@ function anmelden() {
 }
 
 function init() {
+  // Reste aus der alten localStorage-Version (vor der Firebase-Umstellung) entfernen
+  try {
+    localStorage.removeItem('sc1911_anmeldungen');
+    localStorage.removeItem('sc1911_meta');
+  } catch (e) {}
+
   if (eventId) {
     LOCK_KEY = 'sc1911_meine_anmeldung_' + eventId;
     loadEventInfo();
