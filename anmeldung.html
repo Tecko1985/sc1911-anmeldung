@@ -186,6 +186,13 @@ let eventId = new URLSearchParams(location.search).get('event');
 let LOCK_KEY = null;
 let meetingEnded = false;
 
+// Namen robust vergleichen: Gross/Kleinschreibung egal, mehrfache/ungewoehnliche
+// Leerzeichen (z.B. aus CSV/Excel) werden zusammengefasst, damit "Thomas  Mueller"
+// und "Thomas Mueller" als dieselbe Person erkannt werden.
+function normalizeName(s) {
+  return String(s || '').replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
 function showSuccess(name, time) {
   document.getElementById('form-section').style.display = 'none';
   document.getElementById('success-box').style.display = 'flex';
@@ -283,7 +290,8 @@ function anmelden() {
   const anmeldungenRef = db.ref('veranstaltungen/' + eventId + '/anmeldungen');
   anmeldungenRef.once('value').then(snap => {
     const data = snap.val() || {};
-    const match = Object.entries(data).find(([k, p]) => p.name.toLowerCase() === name.toLowerCase());
+    const target = normalizeName(name);
+    const match = Object.entries(data).find(([k, p]) => normalizeName(p.name) === target);
 
     if (match) {
       const [key, existing] = match;

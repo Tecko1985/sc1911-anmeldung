@@ -340,8 +340,8 @@ function editEntry(key) {
   if (newName === null) return;
   const trimmed = newName.trim();
   if (!trimmed) { alert('Name darf nicht leer sein.'); return; }
-  if (trimmed.toLowerCase() !== p.name.toLowerCase() &&
-      participants.some(x => x.key !== key && x.name.toLowerCase() === trimmed.toLowerCase())) {
+  if (normalizeName(trimmed) !== normalizeName(p.name) &&
+      participants.some(x => x.key !== key && normalizeName(x.name) === normalizeName(trimmed))) {
     alert(trimmed + ' ist bereits in der Liste vorhanden.');
     return;
   }
@@ -471,7 +471,7 @@ function showComparison() {
   const persons = {};
   selected.forEach(ev => {
     Object.values(ev.anmeldungen || {}).forEach(p => {
-      const key = (p.name || '').toLowerCase();
+      const key = normalizeName(p.name);
       if (!key) return;
       if (!persons[key]) persons[key] = { name: p.name, perEvent: {} };
       persons[key].perEvent[ev.id] = isPresent(p);
@@ -544,7 +544,7 @@ async function confirmNewEvent() {
     const prevData = prevSnap.val() || {};
     Object.values(prevData).forEach(p => {
       if (p.source === 'Manuell') return; // nur temporär für diese Versammlung, nicht übernehmen
-      carryOver[p.name.toLowerCase()] = {
+      carryOver[normalizeName(p.name)] = {
         name: p.name,
         club: p.club || '1. SC 1911 Heiligenstadt',
         time: '',
@@ -763,7 +763,7 @@ function manualAdd() {
   const name = nameEl.value.trim();
   if (!name || !viewingEventId) { nameEl.focus(); return; }
 
-  const existing = participants.find(p => p.name.toLowerCase() === name.toLowerCase());
+  const existing = participants.find(p => normalizeName(p.name) === normalizeName(name));
   const now = new Date();
   if (existing) {
     if (existing.present) {
@@ -807,14 +807,14 @@ function importCSV() {
   const reader = new FileReader();
   reader.onload = () => {
     const lines = String(reader.result).split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-    const existingNames = new Set(participants.map(p => p.name.toLowerCase()));
+    const existingNames = new Set(participants.map(p => normalizeName(p.name)));
     const seen = new Set();
     const toAdd = [];
     lines.forEach(line => {
       if (/^(vorname|name|nachname)/i.test(line)) return; // Kopfzeile überspringen
       const name = parseNameLine(line);
       if (!name) return;
-      const key = name.toLowerCase();
+      const key = normalizeName(name);
       if (existingNames.has(key) || seen.has(key)) return;
       seen.add(key);
       toAdd.push(name);
@@ -873,6 +873,12 @@ function sortBy(col) {
 
 function isPresent(p) {
   return p.present === undefined ? true : p.present;
+}
+
+// Namen robust vergleichen: Gross/Kleinschreibung egal, mehrfache Leerzeichen
+// (z.B. aus CSV/Excel) werden zusammengefasst.
+function normalizeName(s) {
+  return String(s || '').replace(/\s+/g, ' ').trim().toLowerCase();
 }
 
 function esc(s) {
