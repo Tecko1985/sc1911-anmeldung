@@ -696,11 +696,16 @@ function saveMeta() {
   updateHeaderSub();
 }
 
+let metaRef = null;
 function loadMetaForEvent(eventId) {
-  db.ref('veranstaltungen/' + eventId + '/meta').once('value').then(snap => {
+  if (metaRef) metaRef.off();
+  metaRef = db.ref('veranstaltungen/' + eventId + '/meta');
+  metaRef.on('value', snap => {
     const meta = snap.val() || {};
-    document.getElementById('event-name').value = meta.name || '';
-    document.getElementById('event-date').value = meta.date || '';
+    const nameEl = document.getElementById('event-name');
+    const dateEl = document.getElementById('event-date');
+    if (document.activeElement !== nameEl) nameEl.value = meta.name || '';
+    if (document.activeElement !== dateEl) dateEl.value = meta.date || '';
     updateHeaderSub();
     updateViewingBanner();
     updateMeetingButtons(!!meta.endedAt);
