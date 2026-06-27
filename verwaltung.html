@@ -530,7 +530,7 @@ function selectEvent(eventId) {
 
 function openNewEventDialog() {
   document.getElementById('new-event-name').value = '';
-  document.getElementById('new-event-date').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('new-event-date').value = todayStr();
   document.getElementById('new-event-overlay').style.display = 'flex';
   document.getElementById('new-event-name').focus();
 }
@@ -694,20 +694,27 @@ async function deleteEvent(eventId) {
 
 function updateQR() {
   if (!activeEventId) return;
-  const base = location.href.replace(/verwaltung\.html.*$/, 'anmeldung.html');
+  const base = location.href.split(/[?#]/)[0].replace(/[^/]*$/, 'anmeldung.html');
   document.getElementById('qr-url').value = base + '?event=' + activeEventId;
   generateQR();
 }
 
 // ── Meta ─────────────────────────────────────────────────────────────────────
+let saveMetaTimer = null;
 function saveMeta() {
   if (!viewingEventId) return;
+  updateHeaderSub();
+  // Schreibzugriff entprellen: nicht bei jedem Tastendruck nach Firebase schreiben,
+  // sondern erst kurz nach der letzten Eingabe (verhindert Flackern bei Live-Clients).
+  const eid = viewingEventId;
   const meta = {
     name: document.getElementById('event-name').value,
     date: document.getElementById('event-date').value
   };
-  db.ref('veranstaltungen/' + viewingEventId + '/meta').update(meta);
-  updateHeaderSub();
+  clearTimeout(saveMetaTimer);
+  saveMetaTimer = setTimeout(() => {
+    db.ref('veranstaltungen/' + eid + '/meta').update(meta);
+  }, 400);
 }
 
 let metaRef = null;
@@ -945,6 +952,13 @@ function esc(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// Lokales Datum als YYYY-MM-DD. Nicht toISOString() verwenden – das liefert
+// das UTC-Datum und springt in der deutschen Zeitzone nach Mitternacht auf den Vortag.
+function todayStr() {
+  const d = new Date();
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+}
+
 function renderTable() {
   const q = (document.getElementById('search').value || '').toLowerCase();
   let data = participants.filter(p => (p.name || '').toLowerCase().includes(q));
@@ -1058,7 +1072,7 @@ function printQR() {
 // ── CSV Export ────────────────────────────────────────────────────────────────
 function exportCSV() {
   const eventName = document.getElementById('event-name').value || 'Trainerversammlung';
-  const eventDate = document.getElementById('event-date').value || new Date().toISOString().slice(0,10);
+  const eventDate = document.getElementById('event-date').value || todayStr();
   const header = ['Nr','Name','Verein','Status','Uhrzeit','Quelle'];
   const rows = participants.map((p,i) => [
     i+1, p.name, p.club||'', p.present?'Anwesend':'Abwesend', p.time, p.source
